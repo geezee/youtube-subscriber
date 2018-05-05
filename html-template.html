@@ -1,0 +1,78 @@
+<!DOCTYPE>
+<html>
+    <head>
+        <meta charset="utf8">
+        <title>Subscriptions</title>
+<style>
+html {
+    font-family: sans-serif;
+}
+#menu {
+    width: 100%%;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    margin-bottom: 30px;
+}
+#menu:after {
+    clear: both;
+    content: ' ';
+    display: block;
+}
+#menu li {
+    float: left;
+    padding: 8px 0;
+}
+#menu a {
+    color: #000;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.07);
+    text-decoration: none;
+    border-right: 1px solid rgba(0, 0, 0, 0.15);
+}
+#menu a:hover {
+    background: rgba(0, 0, 0, 0.15);
+}
+#videos {
+    max-width: 840px;
+    display: block;
+    margin: 20px auto;
+}
+.video {
+    float: left;
+    width: 210px;
+    height: 190px;
+}
+.video img {
+    width: 200px;
+}
+.video p {
+    font-size: 15px;
+    width: 230px;
+}
+</style>
+    </head>
+
+    <body>
+
+    <div id="videos">
+
+        <ul id="menu">
+            <li><a href=".">All</a></li>
+            %s
+        </ul>
+        <div class="clear: left"></div>
+
+        <h1>%s</h1>
+
+        %s
+        <div class="video">
+            <a href="#"><img src="/home/euclid/.youtube/downloads/enyay/jC4NNUYIIdM.jpg"></a>
+            <p><strong>Video title goes here</strong> &middot; enyay</p>
+        </div>
+    </div>
+
+    </body>
+
+</html>
