@@ -1,0 +1,47 @@
+youtube-subscriber is a collection of scripts that downloads and serves
+videos from youtube channels.
+
+download-channels downloads the five latest videos of the youtube channels
+provided to it. It will also set up the environment by itself, all you need to
+do is to modify the TARGET_DOWNLOADS variable (default value is
+$HOME/.youtube/downloads).
+
+make-html uses the template html-template.html to output (stdout) an html
+file that lists the thumbnails (and title and uploader) of all the videos
+linking to the mp4 files.
+
+
+
+TUTORIAL
+--------
+
+That's how you subscribe to channels. You just write their username in a file.
+
+    # My recomendations
+    echo "BryanLunduke" >> $HOME/.youtube/channels
+    echo "standupmaths" >> $HOME/.youtube/channels
+    echo "Kurzgesagt"   >> $HOME/.youtube/channels
+
+And that's how you download the last 5 videos of every channel.
+You can make a cron job that runs this command.
+Don't panic, it won't try to redownload videos it already downloaded
+There's also a log in $HOME/.youtube/downloads/download.log
+
+    cat $HOME/.youtube/channels | xargs download-channels
+
+You can also do
+
+    download-channels BryanLunduke standupmaths Kurzgesagt
+
+Once everything's downloaded you can finally run
+
+    make-html > youtube-subscriber.html
+    firefox  youtube-subscriber.html
+
+
+
+PROBLEMS
+--------
+
+- you cannot subscribe to channels that do not have usernames
+- it downloads the highest quality videos (no config available)
