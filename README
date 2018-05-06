@@ -1,50 +1,78 @@
-youtube-subscriber is a collection of scripts that downloads and serves
-videos from youtube channels.
-
-download-channels downloads the five latest videos of the youtube channels
-provided to it. It will also set up the environment by itself, all you need to
-do is to modify the TARGET_DOWNLOADS variable (default value is
-$HOME/.youtube/downloads).
-
-make-html uses the template html-template.html to output (stdout) an html
-file that lists the thumbnails (and title and uploader) of all the videos
-linking to the mp4 files.
+youtube-subscriber is a script that downloads and serves youtube videos from
+channels. Here's a tutorial on how to use it:
 
 
+SETUP:
+------
+You need to start by setting up the environment. Pick a folder (say
+$HOME/youtube) which will hold all the videos and metadata and execute:
 
-TUTORIAL
---------
-
-That's how you subscribe to channels. You just write their username in a file.
-
-    # My recomendations
-    echo "BryanLunduke" >> $HOME/.youtube/channels
-    echo "standupmaths" >> $HOME/.youtube/channels
-    echo "Kurzgesagt"   >> $HOME/.youtube/channels
-
-And that's how you download the last 5 videos of every channel.
-You can change that 5 to something else (it has to be <=30) by modifying the
-DOWNLOAD_COUNT variable.
-You can make a cron job that runs this command.
-Don't panic, it won't try to redownload videos it already downloaded
-There's also a log in $HOME/.youtube/downloads/download.log
-You can also change the format to download (as long as it's mp4) by modifying
-the YOUTUBEDL_FORMAT variabl.
-
-    cat $HOME/.youtube/channels | xargs download-channels
-
-You can also do
-
-    download-channels BryanLunduke standupmaths Kurzgesagt
-
-Once everything's downloaded you can finally run
-
-    make-html > youtube-subscriber.html
-    firefox  youtube-subscriber.html
+    yt-subscriber setup $HOME/youtube
 
 
+MANAGING SUBSCRIPTIONS:
+-----------------------
 
-PROBLEMS
---------
+To subscribe to a channel you need to find the channel's ID (refer to the bottom
+of this document to see how to accomplish that). Once you've obtained the id
+you can execute the following command: (this id corresponds to the Kurzgesagt
+channel)
 
-- you cannot subscribe to channels that do not have usernames
+    yt-subscriber subscribe UCsXVk37bltHxD1rDPwtNM8Q
+
+To unsubscribe from the channel you can run
+
+    yt-subscriber unsubscribe UCsXVk37bltHxD1rDPwtNM8Q
+
+To list all your subscriptions you can run
+
+    yt-subscriber list
+
+
+DOWNLOADING AND SERVING:
+------------------------
+
+To download the latest 5 videos of every subscription in highest definition you
+can execute:
+
+    yt-subscriber sync
+
+To modify the limit (5) to something else, or to modify the format of the video
+downloaded you can edit the yt-subscriber configuration file which resides in
+$HOME/.yt-subscriber.conf
+
+Finally, to serve the videos you need to host them somewhere. Assuming you ran
+a server in your $HOME/youtube folder on port 8080 (e.g. by running
+`php -S localhost:8080` in $HOME/youtube) you can execute
+
+    yt-subscriber serve "http://localhost:8080/downloads" > output.html
+    firefox output.html
+
+Assuming you do not want to host the files somewhere you can also use
+
+    yt-subscriber serve "file://$HOME/youtube/downloads" > output.html
+
+
+USEFUL FILES:
+-------------
+
+- $HOME/youtube/yt-subscriber.log contains a list of all the things
+  yt-subscriber was used for (and what it did).
+
+- $HOME/youtube/downloads/*/videos.tsv is a bunch of tab-seperated values
+  listing all the info about the downloaded videos of the channel. The first
+  column is the id of the video, the second is the publishing date, and the
+  last is the title of the video.
+
+
+HOW TO FIND A CHANNEL'S ID:
+---------------------------
+
+If you are already subscribed to a channel you can get its ID by navigating
+to the channel's URL from your list of subscriptions via the sidebar on the left
+inside Youtube.
+
+Otherwise you can navigate to the channel's webpage, open up the source of the
+webpage (or prepend the URL with view-source:) and search for "channelId" and
+copy the value next to first match (it should look something like the one in
+the example above)

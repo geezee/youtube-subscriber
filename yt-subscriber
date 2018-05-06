@@ -1,0 +1,193 @@
+#!/bin/bash
+
+CONFIG="$HOME/.yt-subscriber.conf"
+
+
+function check_dependency {
+    if [ "$(command -v $1)" = "" ]; then
+        echo "ERROR: Could not find $1"
+        exit -1
+    fi
+}
+
+function check_not_empty {
+    if [ "$1" = "" ]; then
+        usage;
+        exit -1;
+    fi
+}
+
+function check_setup {
+    if [ ! -f $CONFIG ]; then
+        echo "ERROR: Not setup yet"
+        usage
+        exit -1
+    fi
+}
+
+function download_channel_feed {
+    curl --silent "https://www.youtube.com/feeds/videos.xml?channel_id=$1" \
+        | sed 's/xmlns.*=".*"//g' \
+        | sed 's/yt:/yt-/g' | sed 's/media:/media-/g' \
+        > /tmp/yt-feed.rss
+}
+
+function append_log {
+    DIR=`cat $CONFIG | grep "^dir=" | awk -F '=' '{print $2}'`
+    printf "[%s] %s\n" "$(date +'%Y-%m-%d %H:%M:%S')" "$1" >> $DIR/yt-subscriber.log
+}
+
+function get_config {
+    cat $CONFIG | grep "^$1=" | awk -F '=' '{st=index($0,"="); print substr($0, st+1)}'
+}
+
+function usage {
+    echo "Usage: yt-subscriber COMMAND"
+    echo ""
+    echo "COMMAND:"
+    echo "  setup DIR                   setup the config in DIR"
+    echo "  subscribe CHANNEL_ID        subscribe to a channel"
+    echo "  unsubscribe CHANNEL_ID      unsubscribe from a channel"
+    echo "  list                        lists all subscriptions"
+    echo "  sync                        download the videos of the subscribed channels"
+    echo "  serve BASE_URL              output an html file that lists all videos"
+}
+
+
+
+check_dependency youtube-dl
+check_dependency jq
+
+case "$1" in
+    setup)
+        check_not_empty $2
+
+        echo "dir=$2" > $CONFIG
+        echo "count=5" >> $CONFIG
+        echo "youtubedl_format=bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4" >> $CONFIG
+
+        append_log "Setup at $2"
+        ;;
+
+
+    list)
+        check_setup
+
+        echo "Subscriptions"
+        cat $CONFIG \
+            | grep '^subscriber=' \
+            | awk -F ':' '{ st=index($0, ":"); print "- ",substr($0, st+1) }'
+        ;;
+
+
+    subscribe)
+        check_setup
+        check_not_empty $2
+
+        CHANNEL_ID=$2
+        exists=`cat $CONFIG | grep "^subscriber=$CHANNEL_ID:"`
+
+        if [ "$exists" = "" ]; then
+            echo "Downloading RSS feed..."
+            download_channel_feed $CHANNEL_ID
+
+            echo "Parsing RSS feed..."
+            if [ "$(cat /tmp/yt-feed.rss | head -n 1)" = "<!DOCTYPE html>" ]; then
+                echo "ERROR: Channel ID is not valid"
+                exit -1
+            fi
+            CHANNEL_NAME=$(xmllint --xpath '/feed/author/name/text()' /tmp/yt-feed.rss)
+            echo "subscriber=$CHANNEL_ID:$CHANNEL_NAME" >> $CONFIG
+            echo "Added to config"
+            append_log "Subscribed to channel: $CHANNEL_NAME (id: $CHANNEL_ID)"
+        else
+            echo "Already subscribed to" $(echo $exists | awk -F '=' '{st = index($2,":"); print substr($2, st+1)}')
+        fi
+
+        ;;
+
+    
+    unsubscribe)
+        check_setup
+        check_not_empty $2
+
+        CHANNEL_ID=$2
+        exists=`cat $CONFIG | grep "^subscriber=$CHANNEL_ID:"`
+
+        if ! [ "$exists" = "" ]; then
+            new_config=`cat $CONFIG | sed "/^subscriber=$CHANNEL_ID:/d"`
+            echo $new_config > $CONFIG
+            append_log "Unsubscribed from $CHANNEL_ID"
+        else
+            echo "You are not subscribed to this channel"
+        fi
+        ;;
+
+
+    sync)
+        check_setup
+
+        DIR=$(get_config dir)
+        COUNT=$(get_config count)
+        YOUTUBEDL_FORMAT=$(get_config youtubedl_format)
+
+        mkdir -p $DIR/downloads/
+
+        CHANNELS=`cat $CONFIG | grep "^subscriber=" | cut -b 12- | awk -F: '{print $1}'`
+        for channel in $CHANNELS; do
+            append_log "Downloading feed for channel: $channel"
+            mkdir -p $DIR/downloads/$channel
+            download_channel_feed $channel
+
+            MAX_COUNT=`xmllint --xpath 'count(/feed/entry)' /tmp/yt-feed.rss`
+            NUM=$(($COUNT < $MAX_COUNT ? $COUNT : $MAX_COUNT))
+            for i in $(seq 1 $NUM); do
+                TITLE=`xmllint --xpath "/feed/entry[$i]/title/text()" /tmp/yt-feed.rss`
+                UPLOAD_DATE=`xmllint --xpath "/feed/entry[$i]/published/text()" /tmp/yt-feed.rss`
+                VIDEOID=`xmllint --xpath "/feed/entry[$i]/yt-videoId/text()" /tmp/yt-feed.rss`
+
+                file=`find $DIR/downloads -regex '.*\.\(mp4\|mkv\)' -name "$VIDEOID*"`
+                if [ "$file" = "" ]; then
+                    append_log "Downloading $TITLE (id: $VIDEOID)"
+                    youtube-dl -f $YOUTUBEDL_FORMAT --write-thumbnail \
+                        -o "$DIR/downloads/$channel/$VIDEOID" \
+                        "https://www.youtube.com/watch?v=$VIDEOID"
+                    printf "$VIDEOID\t$UPLOAD_DATE\t$TITLE\n" >> $DIR/downloads/$channel/videos.tsv
+                fi
+            done
+        done
+        ;;
+
+
+    serve)
+        check_setup
+        check_not_empty $2
+
+        DIR=$(get_config dir)
+        CHANNELS=$(cat $CONFIG | grep "^subscriber=" | cut -b 12-)
+        JSON="["
+        while read -r channel; do
+            CID=$(echo $channel | awk -F: '{print $1}')
+            CNAME=$(echo $channel | awk -F: '{st=index($0,":"); print substr($0, st+1)}')
+            JSON="$JSON{\"name\":\"$CNAME\",\"id\":\"$CID\",\"videos\":["
+            for video in $(find $DIR/downloads/$CID -regex '.*\.\(mp4\|mkv\)' ); do
+                FILE=$(echo $video | awk -F/ '{print $NF}')
+                VID=$(echo $video | awk -F/ '{print substr($NF, 0, index($NF, ".")-1)}')
+                DURATION=$(ffmpeg -i $video 2>&1 | grep Duration | cut -d ' ' -f 4 | cut -b 1-8)
+                TITLE=$(cat $DIR/downloads/$CID/videos.tsv | grep "^$VID" | cut -f 3)
+                PUBLISHED=$(cat $DIR/downloads/$CID/videos.tsv | grep "^$VID" | cut -f 2)
+                JSON="$JSON{\"id\":\"$VID\",\"published\":\"$PUBLISHED\",\"title\":\"$TITLE\",\"duration\":\"$DURATION\",\"file\":\"$FILE\"},"
+            done
+            JSON="$(echo $JSON | sed -s 's/,$//')]},"
+        done <<< $CHANNELS
+        JSON="$(echo $JSON | sed -s 's/,$//')]"
+
+        append_log "Serving to $2"
+        printf "$(cat html-template.html)" "$JSON" "$2"
+        ;;
+
+
+    *)
+        usage
+        ;;
+esac

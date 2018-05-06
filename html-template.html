@@ -2,71 +2,53 @@
 <html>
     <head>
         <meta charset="utf8">
-        <title>Subscriptions</title>
-<style>
-html {
-    font-family: sans-serif;
-}
-#menu {
-    width: 100%%;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    position: relative;
-    margin-bottom: 30px;
-}
-#menu:after {
-    clear: both;
-    content: ' ';
-    display: block;
-}
-#menu li {
-    float: left;
-    padding: 8px 0;
-}
-#menu a {
-    color: #000;
-    padding: 10px 20px;
-    background: rgba(0, 0, 0, 0.07);
-    text-decoration: none;
-    border-right: 1px solid rgba(0, 0, 0, 0.15);
-}
-#menu a:hover {
-    background: rgba(0, 0, 0, 0.15);
-}
-#videos {
-    max-width: 840px;
-    display: block;
-    margin: 20px auto;
-}
-.video {
-    float: left;
-    width: 210px;
-    height: 190px;
-}
-.video img {
-    width: 200px;
-}
-.video p {
-    font-size: 15px;
-    width: 230px;
-}
-</style>
+        <title>YouTube Subscriptions</title>
     </head>
+<style>
+html { font-family: sans-serif; }
+#content { max-width: 820px; width: 60%%; margin: auto; }
+.video { width: 200px; padding: 10px; margin: 5px; position: relative; float: left; height: 200px; }
+.video:after { clear: both; display: block; content: ' '; }
+.video img { width: 100%%; margin-bottom: 5px; }
+.video .duration { position: absolute; font-weight: bold; font-size: 12px; right: 15px; top: 105px; color: #fff; text-shadow: 0 0 4px #000; background: rgba(0, 0, 0, 0.4); }
+.video .title { font-weight: bold; color: #333; font-size: 16px; }
+.video .uploader { color: #666; font-size: 14px; margin-bottom: 2px; }
+.video .published { color: #666; font-size: 12px; }
+</style>
 
     <body>
 
-    <div id="videos">
-
-        <ul id="menu">
-            <li><a href=".">All</a></li>
-            %s
-        </ul>
-        <div class="clear: left"></div>
-
-        <h1>%s</h1>
-
-        %s
+    <div id="content">
+        <div id="videos"></div>
+    <script>
+function formatDate(date) {
+    const d = new Date(date);
+    const padZero = x => x < 10 ? "0"+x : x;
+    return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()]
+         + " " + d.getDate()
+         + " - " + padZero(d.getHours()) + ":" + padZero(d.getMinutes());
+}
+function shorten(str, lim=25) {
+    return str.length < lim ? str : str.substring(0, lim)+"...";
+}
+(function(data, baseUrl) {
+    data.map(x => x.videos.map(v => { v.uploader = {name: x.name, id: x.id}; return v; }))
+        .reduce((x,y) => x.concat(y))
+        .sort((x, y) => new Date(y.published) - new Date(x.published))
+        .forEach(video => {
+            document.querySelector("#videos").innerHTML +=
+                "<div class='video'>" +
+                    "<a href='"+baseUrl+"/"+video.uploader.id+"/"+video.file+"' target='_blank'>" +
+                        "<img src='"+baseUrl+"/"+video.uploader.id+"/"+video.id+".jpg'>" +
+                    "</a>" +
+                    "<span class='duration'>"+video.duration+"</span>" +
+                    "<div class='title'>"+shorten(video.title, 75)+"</div>" +
+                    "<div class='uploader'>"+shorten(video.uploader.name)+"</div>" +
+                    "<div class='published'>"+formatDate(video.published)+"</div>" +
+                "</div>";
+        });
+})(%s, "%s");
+</script>
     </div>
 
     </body>
