@@ -34,6 +34,7 @@ function download_channel_feed {
 
 function append_log {
     DIR=`cat $CONFIG | grep "^dir=" | awk -F '=' '{print $2}'`
+    touch $DIR/yt-subscriber.log
     printf "[%s] %s\n" "$(date +'%Y-%m-%d %H:%M:%S')" "$1" >> $DIR/yt-subscriber.log
 }
 
@@ -56,11 +57,13 @@ function usage {
 
 
 check_dependency youtube-dl
-check_dependency jq
+check_dependency xmllint
 
 case "$1" in
     setup)
         check_not_empty $2
+
+        mkdir -p $2
 
         echo "dir=$2" > $CONFIG
         echo "count=5" >> $CONFIG
