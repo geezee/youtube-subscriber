@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TARGET_DOWNLOADS=$HOME/.youtube/download
+TARGET_DOWNLOADS=$HOME/.youtube/downloads
 
 MENU=""
 for channel in $(find $TARGET_DOWNLOADS -maxdepth 1 -type d | tail -n +2); do
@@ -9,13 +9,14 @@ for channel in $(find $TARGET_DOWNLOADS -maxdepth 1 -type d | tail -n +2); do
 done
 
 VIDEOS=""
-for video in $(ls -t $TARGET_DOWNLOADS/*/*.mp4); do
+
+for video in $(find $TARGET_DOWNLOADS -regex '.*\.\(mp4\|mkv\)' ); do
     id=$(echo $video | awk -F '/' '{print $NF}' | awk -F '.' '{print $1}')
     thumb=$(printf "%s.jpg" $id)
     channel=$(echo $video | awk -F '/' '{print $(NF-1)}')
     title=$(cat $TARGET_DOWNLOADS/$channel/videos.log | grep $id | head -n 1 | awk -F ',' '{$1=""; print $0}')
 
-    VIDEOS="$VIDEOS<div class='video'><a href='file:///$TARGET_DOWNLOADS/$channel/$id.mp4'><img src='file:///$TARGET_DOWNLOADS/$channel/$id.jpg'></a><p><strong>$title</strong> &middot; $channel</p></div>"
+    VIDEOS="$VIDEOS<div class='video'><a href='file:///$video'><img src='file:///$TARGET_DOWNLOADS/$channel/$id.jpg'></a><p><strong>$title</strong> &middot; $channel</p></div>"
 done
 
 printf "$(cat html-template.html)" "$MENU" "All" "$VIDEOS"
