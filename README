@@ -23,6 +23,7 @@ That's how you subscribe to channels. You just write their username in a file.
     echo "Kurzgesagt"   >> $HOME/.youtube/channels
 
 And that's how you download the last 5 videos of every channel.
+You can change that 5 to something else (it has to be <=30), it's on line 38
 You can make a cron job that runs this command.
 Don't panic, it won't try to redownload videos it already downloaded
 There's also a log in $HOME/.youtube/downloads/download.log
