@@ -155,7 +155,7 @@ case "$1" in
                     youtube-dl -f $YOUTUBEDL_FORMAT --write-thumbnail \
                         -o "$DIR/downloads/$channel/$VIDEOID" \
                         "https://www.youtube.com/watch?v=$VIDEOID"
-                    printf "$VIDEOID\t$UPLOAD_DATE\t$TITLE\n" >> $DIR/downloads/$channel/videos.tsv
+                    printf "$VIDEOID\t$UPLOAD_DATE\t$TITLE\n" | sed 's/"/\&quot;/g' >> $DIR/downloads/$channel/videos.tsv
                 fi
             done
         done
