@@ -42,6 +42,15 @@ function get_config {
     cat $CONFIG | grep "^$1=" | awk -F '=' '{st=index($0,"="); print substr($0, st+1)}'
 }
 
+function all_tsv {
+    DIR=$(get_config dir)
+    for CPATH in $(find $DIR/downloads -type d); do if [ -f $CPATH/videos.tsv ]; then
+        CID=$(echo $CPATH | awk -F '/' '{print $NF}')
+        CNAME=$(cat $CONFIG | grep $CID | cut -d : -f 2) # sloppy
+        cat $CPATH/videos.tsv | awk -F $'\t' "BEGIN {OFS=FS} {print \"$CID\",\"$CNAME\",\$0}"
+    fi done | sort -k 4 -r
+}
+
 function usage {
     echo "Usage: yt-subscriber COMMAND"
     echo ""
@@ -167,26 +176,31 @@ case "$1" in
         check_not_empty $2
 
         DIR=$(get_config dir)
-        CHANNELS=$(cat $CONFIG | grep "^subscriber=" | cut -b 12-)
+
         JSON="["
-        while read -r channel; do
-            CID=$(echo $channel | awk -F: '{print $1}')
-            CNAME=$(echo $channel | awk -F: '{st=index($0,":"); print substr($0, st+1)}')
-            JSON="$JSON{\"name\":\"$CNAME\",\"id\":\"$CID\",\"videos\":["
-            for video in $(find $DIR/downloads/$CID -regex '.*\.\(mp4\|mkv\)' ); do
-                FILE=$(echo $video | awk -F/ '{print $NF}')
-                VID=$(echo $video | awk -F/ '{print substr($NF, 0, index($NF, ".")-1)}')
-                DURATION=$(ffmpeg -i $video 2>&1 | grep Duration | cut -d ' ' -f 4 | cut -b 1-8)
-                TITLE=$(cat $DIR/downloads/$CID/videos.tsv | grep "^$VID" | cut -f 3)
-                PUBLISHED=$(cat $DIR/downloads/$CID/videos.tsv | grep "^$VID" | cut -f 2)
-                JSON="$JSON{\"id\":\"$VID\",\"published\":\"$PUBLISHED\",\"title\":\"$TITLE\",\"duration\":\"$DURATION\",\"file\":\"$FILE\"},"
-            done
-            JSON="$(echo $JSON | sed -s 's/,$//')]},"
-        done <<< $CHANNELS
-        JSON="$(echo $JSON | sed -s 's/,$//')]"
+        while read -r line; do
+            CID=$(echo "$line" | cut -f 1)
+            CNAME=$(echo "$line" | cut -f 2)
+            VID=$(echo "$line" | cut -f 3)
+            TIME=$(echo "$line" | cut -f 4)
+            VNAME=$(echo "$line" | cut -f 5)
+            VPATH=$(find $DIR/downloads/$CID -name "$VID.*")
+
+            if [ -f $DIR/downloads/$CID/$VID.mp4 ]; then
+                VPATH="$DIR/downloads/$CID/$VID.mp4"
+                DURATION=$(ffmpeg -i $VPATH 2>&1 | grep Duration | cut -d ' ' -f 4 | cut -b -8)
+                JSON="$JSON{\"title\":\"$VNAME\",\"published\":\"$TIME\",\"id\":\"$VID\",\"duration\":\"$DURATION\",\"uploader\":{\"id\":\"$CID\",\"name\":\"$CNAME\"}},"
+            fi
+        done <<< $(all_tsv)
+        JSON="$(echo $JSON | sed -e 's/,$//')]"
 
         append_log "Serving to $2"
-        printf "$(cat html-template.html)" "$JSON" "$2"
+
+        TEMPLATE="html-template.html"
+        if ! [ "$3" = "" ]; then
+            TEMPLATE=$3
+        fi
+        printf "$(cat $TEMPLATE)" "$JSON" "$2"
         ;;
 
 

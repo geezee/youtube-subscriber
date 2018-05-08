@@ -52,6 +52,10 @@ Assuming you do not want to host the files somewhere you can also use
 
     yt-subscriber serve "file://$HOME/youtube/downloads" > output.html
 
+You can also specify the template by providing it as an extra parameter
+
+    yt-subscriber server "file://$HOME/youtube/downloads" tmp.htm > output.html
+
 
 USEFUL FILES:
 -------------

@@ -24,28 +24,26 @@ html { font-family: sans-serif; }
 function formatDate(date) {
     const d = new Date(date);
     const padZero = x => x < 10 ? "0"+x : x;
-    return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()]
-         + " " + d.getDate()
+    return d.getDate() + " " 
+         + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()]
+         + " " + d.getFullYear()
          + " - " + padZero(d.getHours()) + ":" + padZero(d.getMinutes());
 }
 function shorten(str, lim=25) {
     return str.length < lim ? str : str.substring(0, lim)+"...";
 }
 (function(data, baseUrl) {
-    data.map(x => x.videos.map(v => { v.uploader = {name: x.name, id: x.id}; return v; }))
-        .reduce((x,y) => x.concat(y))
-        .sort((x, y) => new Date(y.published) - new Date(x.published))
-        .forEach(video => {
-            document.querySelector("#videos").innerHTML +=
-                "<div class='video'>" +
-                    "<a href='"+baseUrl+"/"+video.uploader.id+"/"+video.file+"' target='_blank'>" +
-                        "<img src='"+baseUrl+"/"+video.uploader.id+"/"+video.id+".jpg'>" +
-                    "</a>" +
-                    "<span class='duration'>"+video.duration+"</span>" +
-                    "<div class='title'>"+shorten(video.title, 75)+"</div>" +
-                    "<div class='uploader'>"+shorten(video.uploader.name)+"</div>" +
-                    "<div class='published'>"+formatDate(video.published)+"</div>" +
-                "</div>";
+    data.forEach(video => {
+           document.querySelector("#videos").innerHTML +=
+               "<div class='video'>" +
+                   "<a href='"+baseUrl+"/"+video.uploader.id+"/"+video.id+".mp4' target='_blank'>" +
+                       "<img src='"+baseUrl+"/"+video.uploader.id+"/"+video.id+".jpg'>" +
+                   "</a>" +
+                   "<span class='duration'>"+video.duration+"</span>" +
+                   "<div class='title'>"+shorten(video.title, 75)+"</div>" +
+                   "<div class='uploader'>"+shorten(video.uploader.name)+"</div>" +
+                   "<div class='published'>"+formatDate(video.published)+"</div>" +
+               "</div>";
         });
 })(%s, "%s");
 </script>
