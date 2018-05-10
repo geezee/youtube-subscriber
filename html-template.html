@@ -5,46 +5,142 @@
         <title>YouTube Subscriptions</title>
     </head>
 <style>
-html { font-family: sans-serif; }
-#content { width: 5%%; margin: auto; }
-.video { width: 200px; padding: 10px; margin: 5px; position: relative; float: left; height: 200px; }
-.video:after { clear: both; display: block; content: ' '; }
-.video img { width: 100%%; margin-bottom: 5px; }
-.video .duration { position: absolute; font-weight: bold; font-size: 12px; right: 15px; top: 105px; color: #fff; text-shadow: 0 0 4px #000; background: rgba(0, 0, 0, 0.4); }
-.video .title { font-weight: bold; color: #333; font-size: 16px; }
+html,body { font-family: sans-serif; margin: 0; padding: 0; }
+#uploaders { margin: 0; padding: 0; width: 20%%; float: left; overflow-y: scroll; height: 100%%; }
+#uploaders li { background: #f0f0f0; margin: 5px 10px; padding: 10px; display: block; list-style: none; font-weight: bold; font-size: 14px; cursor: pointer; }
+#uploaders li .count { padding-left: 10px; font-size: 12px; font-weight: normal;  color: #666; }
+#uploaders li abbr { text-decoration: none; }
+#content { overflow-y: scroll; height: 100%%; padding-left: 20px; }
+.day-indicator { margin-top: 20px; font-size: 14px; font-weight: bold; }
+.video { width: 200px; padding: 10px; padding-left: 0; margin: 5px; display: inline-block; height: 200px; }
+.video a { width: 200px; height: 112px; display: block; overflow: hidden; margin-bottom: 5px; position: relative; }
+.video img { width: 100%%; 100%%; }
+.video .duration { font-weight: bold; font-size: 12px; color: #fff; text-shadow: 0 0 4px #000; background: rgba(0, 0, 0, 0.4); position: absolute; bottom: 0; right: 0; }
+.video .title { font-weight: bold; color: #333; font-size: 14px; display: block;  height: 30px; }
+.video .title abbr { text-decoration: none; }
 .video .uploader { color: #666; font-size: 14px; margin-bottom: 2px; }
 .video .published { color: #666; font-size: 12px; }
+#load-more { background: #e0e0e0; display: inline-block; padding: 10px; margin-bottom: 20px; cursor: pointer; font-weight: bold; color: #666; }
 </style>
 
     <body>
 
+    <ul id="uploaders"></ul>
     <div id="content">
         <div id="videos"></div>
+        <div id="load-more">Load more</div>
     <script>
+
+function getMonth(month_index) {
+    return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
+        "Oct", "Nov", "Dec"][month_index];
+}
+
 function formatDate(date) {
     const d = new Date(date);
     const padZero = x => x < 10 ? "0"+x : x;
     return d.getDate() + " " 
-         + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()]
+         + getMonth(d.getMonth())
          + " " + d.getFullYear()
          + " - " + padZero(d.getHours()) + ":" + padZero(d.getMinutes());
 }
+
 function shorten(str, lim=25) {
     return str.length < lim ? str : str.substring(0, lim)+"...";
 }
+
+function renderData(data, criteria, baseUrl) {
+    var current_day = null;
+
+    document.querySelector("#videos").innerHTML = "";
+
+    if ('uploader' in criteria) {
+        data = data.filter(video => video.uploader.id == criteria.uploader);
+        document.querySelector("#videos").innerHTML += "<h1>" + window.channels[criteria.uploader].name + "</h1>";
+    }
+
+    if (data.length < criteria.limit + 10) {
+        document.querySelector('#load-more').style.display = "none";
+    } else {
+        document.querySelector('#load-more').style.display = "inline-block";
+    }
+
+    data.slice(0, criteria.limit)
+        .forEach(video => {
+        var day = (d => d.getDate() + ' ' + getMonth(d.getMonth()))(new Date(video.published));
+        if (day != current_day && criteria.group) {
+            document.querySelector("#videos").innerHTML +=
+                "<div class='day-indicator'>" + day + "</div>";
+            current_day = day;
+        }
+        document.querySelector("#videos").innerHTML +=
+            "<div class='video'>" +
+                "<a href='"+baseUrl+"/"+video.uploader.id+"/"+video.id+".mp4' target='_blank'>" +
+                    "<img src='"+baseUrl+"/"+video.uploader.id+"/"+video.id+".jpg'>" +
+                    "<span class='duration'>"+video.duration+"</span>" +
+                "</a>" +
+                "<h1 class='title'><abbr title='"+video.title+"'>"+shorten(video.title, 35)+"</abbr></h1>" +
+                "<div class='uploader'>"+shorten(video.uploader.name)+"</div>" +
+                "<div class='published'>"+formatDate(video.published)+"</div>" +
+            "</div>";
+    });
+}
+
 (function(data, baseUrl) {
-    data.forEach(video => {
-           document.querySelector("#videos").innerHTML +=
-               "<div class='video'>" +
-                   "<a href='"+baseUrl+"/"+video.uploader.id+"/"+video.id+".mp4' target='_blank'>" +
-                       "<img src='"+baseUrl+"/"+video.uploader.id+"/"+video.id+".jpg'>" +
-                   "</a>" +
-                   "<span class='duration'>"+video.duration+"</span>" +
-                   "<div class='title'>"+shorten(video.title, 75)+"</div>" +
-                   "<div class='uploader'>"+shorten(video.uploader.name)+"</div>" +
-                   "<div class='published'>"+formatDate(video.published)+"</div>" +
-               "</div>";
+    window.channels = {};
+    var criteria = {
+        limit: 10,
+        group: true
+    };
+
+    data.sort((v1, v2) => new Date(v2.published) - new Date(v1.published))
+        .forEach(video => {
+            if (!(video.uploader.id in channels)) {
+                channels[video.uploader.id] = {
+                    count: 1,
+                    name: video.uploader.name
+                };
+            } else channels[video.uploader.id].count += 1;
+        })
+
+    renderData(data, criteria, baseUrl);
+
+    document.querySelector("#uploaders").innerHTML = 
+        "<li data-channel=''>" +
+            "<abbr title='All'>All</abbr>" +
+            "<span class='count'>" + data.length + "</span></li>";
+
+    document.querySelector("#uploaders").innerHTML += Object
+        .keys(channels)
+        .sort((c1, c2) => channels[c1].name.localeCompare(channels[c2].name))
+        .reduce((html, channel) => {
+            return html + '<li data-channel="'+channel+'">' +
+                '<abbr title="' + channel + '">' + shorten(channels[channel].name) + "</abbr>" +
+                "<span class='count'>" + channels[channel].count + "</span></li>";
+        }, "");
+
+    document.querySelectorAll("#uploaders li").forEach(li => {
+        li.addEventListener("click", function() {
+            var name = li.dataset.channel;
+            criteria.limit = 10;
+            if (name.length > 0) {
+                criteria.uploader = name;
+                criteria.group = false;
+            } else {
+                delete criteria.uploader;
+                criteria.group = true;
+            }
+            renderData(data, criteria, baseUrl);
         });
+    });
+
+    document.querySelector("#load-more").addEventListener("click", function() {
+        criteria.limit += 10;
+        renderData(data, criteria, baseUrl);
+        document.querySelector("#content").scrollTop += 0.5 * document.querySelector("#content").offsetHeight;
+    });
+
+
 })(%s, "%s");
 </script>
     </div>
